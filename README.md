@@ -102,9 +102,7 @@ http://localhost:5001
 
 ### Python Version Issues
 
-- This MVP requires Python 3.11 for Mac M1 systems
-- The PLUX-API-Python3/M1_311 directory contains the appropriate binaries
-- For other systems, the app will automatically select the correct binary
+- Script tries to load appropriate PLUX API binary based on OS and Python version. Please ensure correct version is used.
 
 ## Architecture
 

@@ -9,14 +9,56 @@ from flask import Flask, render_template, jsonify, send_file
 from flask_socketio import SocketIO, emit
 from queue import Queue
 
-# Configure path for PLUX API
-osDic = {
-    "Darwin": "M1_311",
-    "Linux": "Linux64",
-    "Windows": f"Win{platform.architecture()[0][:2]}_{''.join(platform.python_version().split('.')[:2])}",
-}
+def get_plux_binary_path():
+    """Determine the correct PLUX API binary path based on OS, architecture, and Python version."""
+    system = platform.system()
+    
+    if system == "Darwin":  # macOS
+        # Detect architecture
+        machine = platform.machine()
+        if machine == "arm64":
+            # Apple Silicon (M1, M2, etc.)
+            arch_prefix = "M1"
+        else:
+            # Intel
+            arch_prefix = "Intel"
+        
+        # Get Python version (major.minor, e.g., "311" for 3.11)
+        py_version = ''.join(platform.python_version_tuple()[:2])
+        
+        return f"{arch_prefix}_{py_version}"
+    
+    elif system == "Linux":
+        machine = platform.machine()
+        if machine == "x86_64":
+            return "Linux64"
+        elif machine == "aarch64":
+            # Check Python version for ARM32/ARM64
+            py_version = ''.join(platform.python_version_tuple()[:2])
+            if py_version == "38":
+                return "LinuxARM64_38"
+            elif py_version == "39":
+                return "LinuxARM64_39"
+            else:
+                return "LinuxARM64_38"  # fallback
+        elif "arm" in machine:
+            py_version = ''.join(platform.python_version_tuple()[:2])
+            if py_version == "311":
+                return "LinuxARM32_311"
+            else:
+                return "LinuxARM32"
+    
+    elif system == "Windows":
+        arch = platform.architecture()[0][:2]  # "32" or "64"
+        py_version = ''.join(platform.python_version_tuple()[:2])
+        return f"Win{arch}_{py_version}"
+    
+    raise OSError(f"Unsupported platform: {system}")
 
-sys.path.append(f"PLUX-API-Python3/{osDic[platform.system()]}")
+# Configure path for PLUX API
+binary_path = get_plux_binary_path()
+print(f"Using PLUX API binary path: {binary_path}")
+sys.path.append(f"PLUX-API-Python3/{binary_path}")
 
 import plux
 
