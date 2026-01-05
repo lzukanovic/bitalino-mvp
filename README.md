@@ -19,14 +19,13 @@ A web-based platform for real-time physiological signal acquisition and visualiz
 - **WebSocket Communication**: Low-latency real-time data streaming
 - **Configurable Acquisition**:
   - Custom device MAC address
-  - Adjustable sample frequency (1-8000 Hz)
+  - Adjustable sample frequency
 
 ## Prerequisites
 
-- Python 3.11+ (tested on Mac M1)
+- Python (tested on Mac M1 with 3.11)
 - PLUX BITalino device
 - ECG sensor connected to analog input A1
-- macOS, Linux, or Windows
 
 ## Installation
 
@@ -55,6 +54,8 @@ You can find your device's MAC address:
 - **macOS**: System Preferences > Bluetooth
 - **Linux**: `bluetoothctl devices`
 - **Windows**: Device Manager > Bluetooth
+
+Or inside of PLUX BioSignals app when connected.
 
 ## Usage
 
@@ -159,19 +160,37 @@ The CSV includes:
 ## Project Structure
 
 ```
-bitalino-mvp/
-├── app.py                      # Flask backend server
+bitalino_app/
+├── app.py                          # Main application entry point
+├── config/
+│   ├── __init__.py
+│   └── settings.py                 # Application configuration
+├── models/
+│   ├── __init__.py
+│   └── device.py                   # BITalino device and status models
+├── services/
+│   ├── __init__.py
+│   ├── acquisition_service.py      # Data acquisition management
+│   └── recording_service.py        # CSV recording management
+├── routes/
+│   ├── __init__.py
+│   ├── api_routes.py              # REST API endpoints
+│   └── socketio_handlers.py       # WebSocket event handlers
+├── utils/
+│   ├── __init__.py
+│   └── plux_loader.py             # Dynamic PLUX library loader
 ├── templates/
-│   └── index.html             # Web interface
-├── static/                    # (for future CSS/JS files)
-├── recordings/                # Saved CSV recordings
-├── PLUX-API-Python3/          # PLUX API binaries
-│   ├── M1_311/               # Mac M1 Python 3.11
-│   ├── Linux64/              # Linux 64-bit
-│   ├── Win64_*/              # Windows binaries
-│   └── ...
-├── requirements.txt           # Python dependencies
-└── README.md                  # This file
+│   └── index.html                 # Web interface
+├── recordings/                    # Saved ECG recordings (auto-created)
+└── PLUX-API-Python3/              # PLUX binary files
+    ├── Linux64/
+    ├── LinuxARM64_*/
+    ├── M1_311/
+    ├── MacOS/
+    │   ├── Intel310/
+    │   └── ...
+    ├── Win64_*/
+    └── ...
 ```
 
 ## Future Enhancements
