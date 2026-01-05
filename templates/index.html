@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BITalino ECG Monitor - MVP</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-item .label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .status-item .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .status-item.connected {
+            border-left-color: #10b981;
+        }
+
+        .status-item.disconnected {
+            border-left-color: #ef4444;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            padding: 8px 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            align-self: flex-end;
+        }
+
+        .btn-start {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .btn-stop {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .chart-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-header {
+            margin-bottom: 15px;
+        }
+
+        .chart-header h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .chart-header p {
+            color: #666;
+            font-size: 13px;
+        }
+
+        #ecgChart {
+            max-height: 400px;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .success-message {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .indicator.connected {
+            background: #10b981;
+        }
+
+        .indicator.disconnected {
+            background: #ef4444;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .recording-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .recording-info {
+            flex: 1;
+        }
+
+        .recording-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .recording-info p {
+            margin: 0;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .btn-download {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .btn-download:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🫀 BITalino ECG Monitor - MVP</h1>
+            <p>Real-time physiological signal acquisition and visualization platform</p>
+        </div>
+
+        <div class="status-panel">
+            <h2 style="margin-bottom: 15px; color: #333;">Device Status</h2>
+
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+
+            <div class="status-grid">
+                <div class="status-item" id="connectionStatus">
+                    <div class="label">Connection</div>
+                    <div class="value">
+                        <span class="indicator disconnected"></span>
+                        <span id="connectionText">Disconnected</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <div class="label">Battery Level</div>
+                    <div class="value" id="batteryLevel">--</div>
+                </div>
+                <div class="status-item">
+                    <div class="label">Sample Rate</div>
+                    <div class="value" id="sampleRate">-- Hz</div>
+                </div>
+                <div class="status-item">
+                    <div class="label">Samples Received</div>
+                    <div class="value" id="samplesReceived">0</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="input-group">
+                    <label for="deviceAddress">Device MAC Address</label>
+                    <input type="text" id="deviceAddress" value="98:D3:C1:FD:ED:B7" placeholder="XX:XX:XX:XX:XX:XX">
+                </div>
+                <div class="input-group">
+                    <label for="frequency">Frequency (Hz)</label>
+                    <input type="number" id="frequency" value="1000" min="1" max="8000">
+                </div>
+                <button class="btn-start" id="startBtn" onclick="startAcquisition()">Start Acquisition</button>
+                <button class="btn-stop" id="stopBtn" onclick="stopAcquisition()" disabled>Stop Acquisition</button>
+            </div>
+        </div>
+
+        <div class="chart-panel">
+            <div class="chart-header">
+                <h2>Live ECG Signal</h2>
+                <p>Real-time visualization of analog input channel 1</p>
+            </div>
+            <canvas id="ecgChart"></canvas>
+        </div>
+
+        <div class="status-panel" style="margin-top: 20px;">
+            <h2 style="margin-bottom: 15px; color: #333;">Recordings</h2>
+            <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Download and manage your ECG recordings</p>
+
+            <div id="recordingsList">
+                <p style="color: #999; font-style: italic;">No recordings available</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Socket.IO
+        const socket = io();
+
+        // Chart configuration
+        const maxDataPoints = 1000;
+        const chartData = {
+            labels: [],
+            datasets: [{
+                label: 'ECG Signal',
+                data: [],
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: true,
+                tension: 0.4
+            }]
+        };
+
+        const chartConfig = {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                animation: false,
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Sample Number'
+                        },
+                        ticks: {
+                            maxTicksLimit: 10
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'ADC Value'
+                        },
+                        beginAtZero: false
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        enabled: false
+                    }
+                }
+            }
+        };
+
+        const ctx = document.getElementById('ecgChart').getContext('2d');
+        const ecgChart = new Chart(ctx, chartConfig);
+
+        // Socket.IO event handlers
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            showSuccess('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            showError('Disconnected from server');
+        });
+
+        socket.on('status_update', (status) => {
+            updateStatus(status);
+        });
+
+        socket.on('new_data', (data) => {
+            updateChart(data);
+        });
+
+        socket.on('error', (error) => {
+            showError(error.message);
+        });
+
+        // Update status display
+        function updateStatus(status) {
+            const connectionStatus = document.getElementById('connectionStatus');
+            const connectionText = document.getElementById('connectionText');
+            const indicator = connectionStatus.querySelector('.indicator');
+
+            if (status.connected) {
+                connectionStatus.classList.remove('disconnected');
+                connectionStatus.classList.add('connected');
+                connectionText.textContent = 'Connected';
+                indicator.classList.remove('disconnected');
+                indicator.classList.add('connected');
+
+                document.getElementById('batteryLevel').textContent = status.battery + '%';
+                document.getElementById('sampleRate').textContent = status.frequency + ' Hz';
+            } else {
+                connectionStatus.classList.remove('connected');
+                connectionStatus.classList.add('disconnected');
+                connectionText.textContent = 'Disconnected';
+                indicator.classList.remove('connected');
+                indicator.classList.add('disconnected');
+            }
+
+            document.getElementById('samplesReceived').textContent = status.samples_received.toLocaleString();
+
+            if (status.error) {
+                showError(status.error);
+            }
+        }
+
+        // Update chart with new data
+        function updateChart(data) {
+            chartData.labels.push(data.sequence);
+            chartData.datasets[0].data.push(data.value);
+
+            // Keep only last N points
+            if (chartData.labels.length > maxDataPoints) {
+                chartData.labels.shift();
+                chartData.datasets[0].data.shift();
+            }
+
+            ecgChart.update('none');
+        }
+
+        // Start acquisition
+        function startAcquisition() {
+            const address = document.getElementById('deviceAddress').value;
+            const frequency = parseInt(document.getElementById('frequency').value);
+
+            // Clear chart
+            chartData.labels = [];
+            chartData.datasets[0].data = [];
+            ecgChart.update();
+
+            // Send start command
+            socket.emit('start_acquisition', {
+                address: address,
+                frequency: frequency,
+                channel_code: 0x01  // First channel
+            });
+
+            // Update UI
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+
+            showSuccess('Starting acquisition...');
+        }
+
+        // Stop acquisition
+        function stopAcquisition() {
+            socket.emit('stop_acquisition');
+
+            // Update UI
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+
+            showSuccess('Stopping acquisition...');
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Load recordings list
+        function loadRecordings() {
+            fetch('/api/recordings')
+                .then(response => response.json())
+                .then(recordings => {
+                    const recordingsList = document.getElementById('recordingsList');
+
+                    if (recordings.length === 0) {
+                        recordingsList.innerHTML = '<p style="color: #999; font-style: italic;">No recordings available</p>';
+                        return;
+                    }
+
+                    let html = '';
+                    recordings.forEach(recording => {
+                        const sizeKB = (recording.size / 1024).toFixed(2);
+                        const date = new Date(recording.created * 1000).toLocaleString();
+                        const samples = recording.metadata.samples || 'N/A';
+                        const frequency = recording.metadata.frequency || 'N/A';
+
+                        html += `
+                            <div class="recording-item">
+                                <div class="recording-info">
+                                    <h3>${recording.filename}</h3>
+                                    <p>📅 ${date} | 📊 ${samples} samples | ⚡ ${frequency} Hz | 💾 ${sizeKB} KB</p>
+                                </div>
+                                <a href="/api/recordings/${recording.filename}" class="btn-download" download>Download</a>
+                            </div>
+                        `;
+                    });
+
+                    recordingsList.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading recordings:', error);
+                });
+        }
+
+        // Listen for new recordings
+        socket.on('new_recording', (data) => {
+            showSuccess(`Recording saved: ${data.filename} (${data.samples} samples)`);
+            loadRecordings();
+        });
+
+        // Load initial status and recordings
+        fetch('/api/status')
+            .then(response => response.json())
+            .then(status => updateStatus(status))
+            .catch(error => console.error('Error fetching status:', error));
+
+        loadRecordings();
+    </script>
+</body>
+</html>
