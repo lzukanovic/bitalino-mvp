@@ -2,7 +2,7 @@
 WebSocket event handlers for real-time communication.
 """
 from flask_socketio import emit
-from config.settings import DEFAULT_DEVICE_ADDRESS, DEFAULT_FREQUENCY, DEFAULT_CHANNEL_CODE
+from config.settings import DEFAULT_DEVICE_ADDRESS, DEFAULT_FREQUENCY, DEFAULT_CHANNELS
 
 # Will be set by main app
 acquisition_service = None
@@ -42,14 +42,13 @@ def init_socketio_handlers(socketio, acq_service):
             # Get parameters from client with defaults
             address = data.get('address', DEFAULT_DEVICE_ADDRESS)
             frequency = data.get('frequency', DEFAULT_FREQUENCY)
-            channel_code = data.get('channel_code', DEFAULT_CHANNEL_CODE)
+            channels = data.get('channels', DEFAULT_CHANNELS)
 
-            # Start acquisition
-            acquisition_service.start(address, frequency, channel_code)
-            
-            emit('status_update', acquisition_service.get_status())
+            # Start acquisition. The worker thread emits its own status_update
+            # once the device is connected, so we don't emit here.
+            acquisition_service.start(address, frequency, channels)
 
-        except RuntimeError as e:
+        except (RuntimeError, ValueError) as e:
             emit('error', {'message': str(e)})
         except Exception as e:
             print(f"Error starting acquisition: {e}")

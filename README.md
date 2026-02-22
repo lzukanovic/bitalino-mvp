@@ -1,10 +1,10 @@
-# BITalino ECG Monitor - MVP
+# BITalino MVP
 
 A web-based platform for real-time physiological signal acquisition and visualization using the PLUX BITalino system.
 
 ## Features
 
-- **Real-time ECG Visualization**: Live chart displaying ECG signals from BITalino analog input channel 1
+- **Real-time Visualization**: Live chart displaying signals from BITalino analog input channels
 - **Device Status Monitoring**:
   - Connection status with visual indicators
   - Battery level monitoring
@@ -15,17 +15,26 @@ A web-based platform for real-time physiological signal acquisition and visualiz
   - Recordings include metadata (timestamp, frequency, battery, sample count)
   - Download recordings directly from web interface
   - Organized recordings list with file info
-- **Web-based Interface**: Access from any browser on your local network
-- **WebSocket Communication**: Low-latency real-time data streaming
 - **Configurable Acquisition**:
   - Custom device MAC address
   - Adjustable sample frequency
+  - Per-channel configuration for up to 6 analog inputs
+
+## Hardware
+
+PLUX BITalino (r)evolution standalone board:
+| Ports | Resolution |
+|-------|------------|
+| A1 – A4 | 10-bit ADC |
+| A5 – A6 | 6-bit ADC |
+
+Supported sampling rates: **1, 10, 100, 1000 Hz**
 
 ## Prerequisites
 
-- Python (tested on Mac M1 with 3.11)
-- PLUX BITalino device
-- ECG sensor connected to analog input A1
+- Python 3.11 (tested on macOS M1)
+- PLUX BITalino device paired over Bluetooth
+- Sensors connected to the analog inputs you intend to use
 
 ## Installation
 
@@ -47,7 +56,7 @@ Before running, ensure your BITalino device is:
 
 1. Powered on
 2. Bluetooth is enabled on your computer
-3. Device is paired (MAC address default: `98:D3:C1:FD:ED:B7`)
+3. Device is paired (MAC address default: `98:D3:C1:FD:ED:B7`). Bluetooth pairing code is `1234`.
 
 You can find your device's MAC address:
 
@@ -73,8 +82,9 @@ http://localhost:5001
 
 3. Configure acquisition parameters:
 
-   - **Device MAC Address**: Enter your BITalino's MAC address
-   - **Frequency**: Set sampling rate (1000 Hz recommended for ECG)
+- **Device MAC Address**: Enter your BITalino's MAC address
+- **Frequency**: Set sampling rate (1, 10, 100, 1000 Hz)
+- **Channels**: Configure which analog channels to acquire (A1-A6)
 
 4. Click **Start Acquisition** to begin collecting data
 
@@ -85,25 +95,6 @@ http://localhost:5001
 7. Your recording is automatically saved as a CSV file and appears in the **Recordings** section
 
 8. Click **Download** on any recording to save it to your computer
-
-## Troubleshooting
-
-### Connection Issues
-
-- Ensure BITalino is powered on and paired
-- Verify the MAC address is correct
-- Check Bluetooth is enabled
-- Try re-pairing the device
-
-### No Data Displayed
-
-- Confirm ECG sensor is properly connected to A1 input
-- Check sensor electrodes are attached correctly
-- Verify the channel code is set to `0x01` (first channel)
-
-### Python Version Issues
-
-- Script tries to load appropriate PLUX API binary based on OS and Python version. Please ensure correct version is used.
 
 ## Architecture
 
@@ -117,6 +108,7 @@ http://localhost:5001
 ### Frontend (templates/index.html)
 
 - **Chart.js**: Real-time signal visualization
+- **Toastify-js**: User notifications for status updates and errors
 - **Socket.IO Client**: WebSocket communication
 - **Responsive Design**: Works on desktop and mobile browsers
 
@@ -131,31 +123,23 @@ http://localhost:5001
 
 ## CSV File Format
 
-Recordings are saved in CSV format with the following structure:
+Recordings are saved to the `recordings/` directory with timestamped filenames (`recording_YYYYMMDD_HHMMSS.csv`).
 
 ```csv
-# BITalino ECG Recording
-# Start Time,2025-11-21 18:30:45
+# BITalino Recording
+# Start Time,2026-02-22 14:30:00
 # Frequency (Hz),1000
-# Channel Code,0x01
-# Battery (%),95
+# Active Ports,1,3
+# Battery (%),87
 # Device Address,98:D3:C1:FD:ED:B7
 # Total Samples,12500
-
-Sequence,ECG Value,Timestamp
-0,512,1700589045.123
-1,515,1700589045.124
-2,518,1700589045.125
+Sequence,Timestamp,ECG (ECG) Port1,GSR (EDA) Port3
+0,1740228600.123,512,318
+1,1740228600.124,515,320
 ...
 ```
 
-The CSV includes:
-
-- **Metadata header**: Recording parameters and device info
-- **Data columns**:
-  - `Sequence`: Sample sequence number
-  - `ECG Value`: Raw ADC value (0-1023 for 10-bit)
-  - `Timestamp`: Unix timestamp with milliseconds
+Column headers follow the pattern `<label> (<type>) Port<n>` for each active channel.
 
 ## Project Structure
 
@@ -163,21 +147,16 @@ The CSV includes:
 bitalino_app/
 ├── app.py                          # Main application entry point
 ├── config/
-│   ├── __init__.py
 │   └── settings.py                 # Application configuration
 ├── models/
-│   ├── __init__.py
 │   └── device.py                   # BITalino device and status models
 ├── services/
-│   ├── __init__.py
 │   ├── acquisition_service.py      # Data acquisition management
 │   └── recording_service.py        # CSV recording management
 ├── routes/
-│   ├── __init__.py
 │   ├── api_routes.py              # REST API endpoints
 │   └── socketio_handlers.py       # WebSocket event handlers
 ├── utils/
-│   ├── __init__.py
 │   └── plux_loader.py             # Dynamic PLUX library loader
 ├── templates/
 │   └── index.html                 # Web interface
@@ -192,20 +171,6 @@ bitalino_app/
     ├── Win64_*/
     └── ...
 ```
-
-## Future Enhancements
-
-This MVP can be extended to support:
-
-- Multiple sensor channels simultaneously
-- Data export (CSV, JSON formats)
-- Real-time signal processing (filtering, peak detection)
-- Integration with Tobii Pro Glasses 3 eye tracker
-- Integration with SCANeR driving simulator
-- Multi-device synchronization
-- Database storage for historical data
-- Advanced visualization (FFT, spectrograms)
-- User authentication and session management
 
 ## Technical Notes
 
@@ -222,7 +187,7 @@ Based on [PLUX BITalino Python samples](https://github.com/pluxbiosignals/python
 ## Support
 
 For BITalino hardware support, visit: https://www.pluxbiosignals.com/
-For PLUX API documentation: Check PLUX-API-Python3 directory
+For PLUX API documentation, visit: https://www.downloads.plux.info/apis/PLUX-API-Python-Docs/index.html
 
 ---
 

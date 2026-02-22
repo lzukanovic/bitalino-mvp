@@ -3,9 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BITalino ECG Monitor - MVP</title>
+    <title>BITalino MVP</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.js"></script>
     <style>
       * {
         margin: 0;
@@ -27,6 +32,8 @@
         margin: 0 auto;
       }
 
+      /* ─── Header ─────────────────────────────────────────────────────────── */
+
       .header {
         background: white;
         border-radius: 12px;
@@ -46,7 +53,9 @@
         font-size: 14px;
       }
 
-      .status-panel {
+      /* ─── Generic Panel ───────────────────────────────────────────────────── */
+
+      .panel {
         background: white;
         border-radius: 12px;
         padding: 20px;
@@ -54,11 +63,18 @@
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       }
 
+      .panel > h2 {
+        color: #333;
+        font-size: 20px;
+        margin-bottom: 15px;
+      }
+
+      /* ─── Status Grid ────────────────────────────────────────────────────── */
+
       .status-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 15px;
-        margin-bottom: 20px;
       }
 
       .status-item {
@@ -77,9 +93,14 @@
       }
 
       .status-item .value {
-        font-size: 24px;
+        font-size: 22px;
         font-weight: bold;
         color: #333;
+      }
+
+      .status-item .value.small {
+        font-size: 15px;
+        word-break: break-word;
       }
 
       .status-item.connected {
@@ -90,10 +111,69 @@
         border-left-color: #ef4444;
       }
 
-      .controls {
+      .status-item.faulted {
+        border-left-color: #f59e0b;
+      }
+
+      .indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+      }
+
+      .indicator.connected {
+        background: #10b981;
+      }
+
+      .indicator.disconnected {
+        background: #ef4444;
+        animation: none;
+      }
+
+      .indicator.faulted {
+        background: #f59e0b;
+        animation: none;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      /* ─── Configuration Panel ────────────────────────────────────────────── */
+
+      .config-section {
+        margin-bottom: 22px;
+      }
+
+      .config-section:last-child {
+        margin-bottom: 0;
+      }
+
+      .config-section h3 {
+        font-size: 11px;
+        font-weight: 700;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .connection-settings {
         display: flex;
-        gap: 10px;
+        gap: 15px;
         flex-wrap: wrap;
+        align-items: flex-end;
       }
 
       .input-group {
@@ -108,17 +188,143 @@
         font-weight: 500;
       }
 
-      .input-group input {
+      .input-group input,
+      .input-group select {
         padding: 8px 12px;
         border: 2px solid #e5e7eb;
         border-radius: 6px;
         font-size: 14px;
-        transition: border-color 0.3s;
+        background: white;
+        transition: border-color 0.2s;
       }
 
-      .input-group input:focus {
+      .input-group input:focus,
+      .input-group select:focus {
         outline: none;
         border-color: #667eea;
+      }
+
+      /* ─── Channel Configuration Table ────────────────────────────────────── */
+
+      .channels-header,
+      .channel-row {
+        display: grid;
+        grid-template-columns: 80px 140px 1fr 60px;
+        gap: 10px;
+        align-items: center;
+        padding: 7px 10px;
+      }
+
+      .channels-header {
+        background: #f8f9fa;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+      }
+
+      .channel-row {
+        border-radius: 6px;
+        border-left: 3px solid transparent;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+      }
+
+      .channel-row:hover {
+        background: #f8f9fa;
+      }
+
+      .channel-port-badge {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+
+      .channel-port-num {
+        font-weight: 700;
+        font-size: 15px;
+        color: #333;
+      }
+
+      .channel-bit-info {
+        font-size: 10px;
+        color: #bbb;
+      }
+
+      .channel-label-input,
+      .channel-type-select {
+        padding: 6px 10px;
+        border: 2px solid #e5e7eb;
+        border-radius: 6px;
+        font-size: 13px;
+        width: 100%;
+        background: white;
+        transition: border-color 0.2s;
+      }
+
+      .channel-label-input:focus,
+      .channel-type-select:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      /* ─── Toggle Switch ──────────────────────────────────────────────────── */
+
+      .toggle {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+      }
+
+      .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #d1d5db;
+        border-radius: 24px;
+        transition: 0.25s;
+      }
+
+      .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        border-radius: 50%;
+        transition: 0.25s;
+      }
+
+      .toggle input:checked + .toggle-slider {
+        background-color: #10b981;
+      }
+
+      .toggle input:checked + .toggle-slider:before {
+        transform: translateX(20px);
+      }
+
+      /* ─── Acquisition Buttons ────────────────────────────────────────────── */
+
+      .acquisition-controls {
+        display: flex;
+        gap: 10px;
       }
 
       button {
@@ -128,8 +334,7 @@
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.3s;
-        align-self: flex-end;
+        transition: all 0.2s;
       }
 
       .btn-start {
@@ -155,12 +360,22 @@
       button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+        transform: none !important;
       }
+
+      /* Dim the entire config form while acquisition is running */
+      .config-disabled {
+        pointer-events: none;
+        opacity: 0.5;
+      }
+
+      /* ─── Chart Panel ────────────────────────────────────────────────────── */
 
       .chart-panel {
         background: white;
         border-radius: 12px;
         padding: 20px;
+        margin-bottom: 20px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       }
 
@@ -179,57 +394,11 @@
         font-size: 13px;
       }
 
-      #ecgChart {
+      #signalChart {
         max-height: 400px;
       }
 
-      .error-message {
-        background: #fee2e2;
-        border: 1px solid #ef4444;
-        color: #991b1b;
-        padding: 12px 15px;
-        border-radius: 6px;
-        margin-bottom: 15px;
-        display: none;
-      }
-
-      .success-message {
-        background: #d1fae5;
-        border: 1px solid #10b981;
-        color: #065f46;
-        padding: 12px 15px;
-        border-radius: 6px;
-        margin-bottom: 15px;
-        display: none;
-      }
-
-      .indicator {
-        display: inline-block;
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        margin-right: 8px;
-        animation: pulse 2s infinite;
-      }
-
-      .indicator.connected {
-        background: #10b981;
-      }
-
-      .indicator.disconnected {
-        background: #ef4444;
-        animation: none;
-      }
-
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.5;
-        }
-      }
+      /* ─── Recordings ─────────────────────────────────────────────────────── */
 
       .recording-item {
         background: #f8f9fa;
@@ -267,7 +436,7 @@
         text-decoration: none;
         font-size: 13px;
         font-weight: 600;
-        transition: all 0.3s;
+        transition: all 0.2s;
         display: inline-block;
       }
 
@@ -279,21 +448,20 @@
   </head>
   <body>
     <div class="container">
+      <!-- ── Header ──────────────────────────────────────────────────────── -->
       <div class="header">
-        <h1>🫀 BITalino ECG Monitor - MVP</h1>
+        <h1>BITalino MVP</h1>
         <p>
           Real-time physiological signal acquisition and visualization platform
         </p>
       </div>
 
-      <div class="status-panel">
-        <h2 style="margin-bottom: 15px; color: #333">Device Status</h2>
-
-        <div class="error-message" id="errorMessage"></div>
-        <div class="success-message" id="successMessage"></div>
+      <!-- ── Device Status ────────────────────────────────────────────────── -->
+      <div class="panel">
+        <h2>Device Status</h2>
 
         <div class="status-grid">
-          <div class="status-item" id="connectionStatus">
+          <div class="status-item disconnected" id="connectionStatus">
             <div class="label">Connection</div>
             <div class="value">
               <span class="indicator disconnected"></span>
@@ -312,56 +480,95 @@
             <div class="label">Samples Received</div>
             <div class="value" id="samplesReceived">0</div>
           </div>
-        </div>
-
-        <div class="controls">
-          <div class="input-group">
-            <label for="deviceAddress">Device MAC Address</label>
-            <input
-              type="text"
-              id="deviceAddress"
-              value="98:D3:C1:FD:ED:B7"
-              placeholder="XX:XX:XX:XX:XX:XX"
-            />
+          <div class="status-item">
+            <div class="label">Active Channels</div>
+            <div class="value small" id="activeChannels">--</div>
           </div>
-          <div class="input-group">
-            <label for="frequency">Frequency (Hz)</label>
-            <input
-              type="number"
-              id="frequency"
-              value="1000"
-              min="1"
-              max="8000"
-            />
-          </div>
-          <button class="btn-start" id="startBtn" onclick="startAcquisition()">
-            Start Acquisition
-          </button>
-          <button
-            class="btn-stop"
-            id="stopBtn"
-            onclick="stopAcquisition()"
-            disabled
-          >
-            Stop Acquisition
-          </button>
         </div>
       </div>
 
+      <!-- ── Device Configuration ──────────────────────────────────────────── -->
+      <div class="panel">
+        <h2>Device Configuration</h2>
+
+        <div id="configSection">
+          <!-- Connection Settings -->
+          <div class="config-section">
+            <h3>Connection Settings</h3>
+            <div class="connection-settings">
+              <div class="input-group">
+                <label for="deviceAddress">MAC Address</label>
+                <input
+                  type="text"
+                  id="deviceAddress"
+                  value="98:D3:C1:FD:ED:B7"
+                  placeholder="XX:XX:XX:XX:XX:XX"
+                  style="min-width: 185px"
+                />
+              </div>
+              <div class="input-group">
+                <label for="frequency">Sampling Frequency</label>
+                <select id="frequency">
+                  <option value="1">1 Hz</option>
+                  <option value="10">10 Hz</option>
+                  <option value="100" selected>100 Hz</option>
+                  <option value="1000">1000 Hz</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analog Channel Configuration -->
+          <div class="config-section">
+            <h3>Analog Channel Configuration</h3>
+            <div class="channels-header">
+              <span>Port</span>
+              <span>Label</span>
+              <span>Signal Type</span>
+              <span>Enable</span>
+            </div>
+            <div id="channelsContainer"></div>
+          </div>
+        </div>
+
+        <!-- Acquisition buttons are outside #configSection so the dim overlay
+             applied during acquisition does not affect them. -->
+        <div class="config-section" style="margin-top: 22px; margin-bottom: 0">
+          <div class="acquisition-controls">
+            <button
+              class="btn-start"
+              id="startBtn"
+              onclick="startAcquisition()"
+            >
+              Start Acquisition
+            </button>
+            <button
+              class="btn-stop"
+              id="stopBtn"
+              onclick="stopAcquisition()"
+              disabled
+            >
+              Stop Acquisition
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Live Signal Chart ─────────────────────────────────────────────── -->
       <div class="chart-panel">
         <div class="chart-header">
-          <h2>Live ECG Signal</h2>
-          <p>Real-time visualization of analog input channel 1</p>
+          <h2>Live Signal Data</h2>
+          <p>Real-time visualization of active analog input channels</p>
         </div>
-        <canvas id="ecgChart"></canvas>
+        <canvas id="signalChart"></canvas>
       </div>
 
-      <div class="status-panel" style="margin-top: 20px">
-        <h2 style="margin-bottom: 15px; color: #333">Recordings</h2>
+      <!-- ── Recordings ────────────────────────────────────────────────────── -->
+      <div class="panel">
+        <h2>Recordings</h2>
         <p style="color: #666; margin-bottom: 15px; font-size: 14px">
-          Download and manage your ECG recordings
+          Download and manage your recordings
         </p>
-
         <div id="recordingsList">
           <p style="color: #999; font-style: italic">No recordings available</p>
         </div>
@@ -369,30 +576,110 @@
     </div>
 
     <script>
-      // Initialize Socket.IO
-      const socket = io();
-
-      // Chart configuration
-      const maxDataPoints = 1000;
-      const chartData = {
-        labels: [],
-        datasets: [
-          {
-            label: "ECG Signal",
-            data: [],
-            borderColor: "#667eea",
-            backgroundColor: "rgba(102, 126, 234, 0.1)",
-            borderWidth: 2,
-            pointRadius: 0,
-            fill: true,
-            tension: 0.4,
-          },
-        ],
+      // ── Constants ───────────────────────────────────────────────────────────
+      const CHANNEL_COLORS = {
+        1: "#667eea",
+        2: "#10b981",
+        3: "#f59e0b",
+        4: "#ef4444",
+        5: "#8b5cf6",
+        6: "#06b6d4",
       };
 
-      const chartConfig = {
+      const SIGNAL_TYPES = [
+        "ACC",
+        "CO2",
+        "CUSTOM",
+        "DIA",
+        "ECG",
+        "EDA",
+        "EEG",
+        "EGG",
+        "EMG",
+        "EOG",
+        "GLUC",
+        "HR",
+        "LUX",
+        "OXI",
+        "PULSEOXI",
+        "RAW",
+        "RESP",
+        "SYS",
+        "TEMP",
+        "TEMPw",
+        "TVOC",
+      ];
+
+      // BITalino hardware: ports 1-4 are 10-bit ADC, ports 5-6 are 6-bit ADC
+      const PORT_BITS = {
+        1: "10-bit",
+        2: "10-bit",
+        3: "10-bit",
+        4: "10-bit",
+        5: "6-bit",
+        6: "6-bit",
+      };
+
+      const maxDataPoints = 1000;
+
+      // Maps port number → dataset index in signalChart for the current acquisition
+      let portToDatasetIndex = {};
+
+      // Client-side sample counter, updated on every new_data event
+      let sampleCount = 0;
+
+      // ── Build Channel Rows ──────────────────────────────────────────────────
+      function buildChannelRows() {
+        const container = document.getElementById("channelsContainer");
+        const optionsHtml = SIGNAL_TYPES.map(
+          (t) =>
+            `<option value="${t}"${t === "RAW" ? " selected" : ""}>${t}</option>`,
+        ).join("");
+
+        for (let port = 1; port <= 6; port++) {
+          const row = document.createElement("div");
+          row.className = "channel-row";
+          row.id = `channel-row-${port}`;
+          row.innerHTML = `
+            <div class="channel-port-badge">
+              <span class="channel-port-num">A${port}</span>
+              <span class="channel-bit-info">${PORT_BITS[port]}</span>
+            </div>
+            <input
+              type="text"
+              id="ch${port}Label"
+              class="channel-label-input"
+              value="A${port}"
+              placeholder="Label"
+              maxlength="20"
+            />
+            <select id="ch${port}Type" class="channel-type-select">${optionsHtml}</select>
+            <label class="toggle">
+              <input type="checkbox" id="ch${port}Enabled" ${port == 1 ? "checked" : ""} onchange="onChannelToggle(${port})">
+              <span class="toggle-slider"></span>
+            </label>
+          `;
+          container.appendChild(row);
+        }
+      }
+
+      function onChannelToggle(port) {
+        const row = document.getElementById(`channel-row-${port}`);
+        const enabled = document.getElementById(`ch${port}Enabled`).checked;
+        if (enabled) {
+          row.style.borderLeftColor = CHANNEL_COLORS[port];
+          row.style.background = CHANNEL_COLORS[port] + "12";
+        } else {
+          row.style.borderLeftColor = "transparent";
+          row.style.background = "";
+        }
+      }
+
+      // ── Chart Setup ─────────────────────────────────────────────────────────
+      const ctx = document.getElementById("signalChart").getContext("2d");
+      const signalChart = new Chart(ctx, {
         type: "line",
-        data: chartData,
+        data: { labels: [], datasets: [] },
         options: {
           responsive: true,
           maintainAspectRatio: true,
@@ -400,51 +687,38 @@
           scales: {
             x: {
               display: true,
-              title: {
-                display: true,
-                text: "Sample Number",
-              },
-              ticks: {
-                maxTicksLimit: 10,
-              },
+              title: { display: true, text: "Sample Number" },
+              ticks: { maxTicksLimit: 10 },
             },
             y: {
               display: true,
-              title: {
-                display: true,
-                text: "ADC Value",
-              },
+              title: { display: true, text: "ADC Value" },
               beginAtZero: false,
             },
           },
           plugins: {
-            legend: {
-              display: true,
-              position: "top",
-            },
-            tooltip: {
-              enabled: false,
-            },
+            legend: { display: true, position: "top" },
+            tooltip: { enabled: false },
           },
         },
-      };
+      });
 
-      const ctx = document.getElementById("ecgChart").getContext("2d");
-      const ecgChart = new Chart(ctx, chartConfig);
+      // ── Socket.IO ────────────────────────────────────────────────────────────
+      const socket = io();
 
-      // Socket.IO event handlers
       socket.on("connect", () => {
-        console.log("Connected to server");
         showSuccess("Connected to server");
       });
 
       socket.on("disconnect", () => {
-        console.log("Disconnected from server");
         showError("Disconnected from server");
       });
 
       socket.on("status_update", (status) => {
         updateStatus(status);
+        if (!status.connected) {
+          setAcquisitionRunning(false);
+        }
       });
 
       socket.on("new_data", (data) => {
@@ -453,151 +727,190 @@
 
       socket.on("error", (error) => {
         showError(error.message);
+        setAcquisitionRunning(false);
       });
 
-      // Update status display
+      // ── Status Update ────────────────────────────────────────────────────────
       function updateStatus(status) {
-        const connectionStatus = document.getElementById("connectionStatus");
+        const statusItem = document.getElementById("connectionStatus");
         const connectionText = document.getElementById("connectionText");
-        const indicator = connectionStatus.querySelector(".indicator");
+        const indicator = statusItem.querySelector(".indicator");
 
         if (status.connected) {
-          connectionStatus.classList.remove("disconnected");
-          connectionStatus.classList.add("connected");
+          statusItem.className = "status-item connected";
           connectionText.textContent = "Connected";
-          indicator.classList.remove("disconnected");
-          indicator.classList.add("connected");
-
+          indicator.className = "indicator connected";
           document.getElementById("batteryLevel").textContent =
             status.battery + "%";
           document.getElementById("sampleRate").textContent =
             status.frequency + " Hz";
-        } else {
-          connectionStatus.classList.remove("connected");
-          connectionStatus.classList.add("disconnected");
-          connectionText.textContent = "Disconnected";
-          indicator.classList.remove("connected");
-          indicator.classList.add("disconnected");
-        }
-
-        document.getElementById("samplesReceived").textContent =
-          status.samples_received.toLocaleString();
-
-        if (status.error) {
+        } else if (status.error) {
+          // Disconnected due to an error — show amber "Error" state
+          statusItem.className = "status-item faulted";
+          connectionText.textContent = "Error";
+          indicator.className = "indicator faulted";
           showError(status.error);
+        } else {
+          statusItem.className = "status-item disconnected";
+          connectionText.textContent = "Disconnected";
+          indicator.className = "indicator disconnected";
         }
+
+        const activePorts = status.active_ports || [];
+        document.getElementById("activeChannels").textContent =
+          activePorts.length > 0
+            ? activePorts.map((p) => `A${p}`).join(", ")
+            : "--";
       }
 
-      // Update chart with new data
+      // ── Chart Update ─────────────────────────────────────────────────────────
       function updateChart(data) {
-        chartData.labels.push(data.sequence);
-        chartData.datasets[0].data.push(data.value);
+        if (!data.channels) return;
 
-        // Keep only last N points
-        if (chartData.labels.length > maxDataPoints) {
-          chartData.labels.shift();
-          chartData.datasets[0].data.shift();
-        }
+        sampleCount++;
+        document.getElementById("samplesReceived").textContent =
+          sampleCount.toLocaleString();
 
-        ecgChart.update("none");
-      }
+        signalChart.data.labels.push(data.sequence);
 
-      // Start acquisition
-      function startAcquisition() {
-        const address = document.getElementById("deviceAddress").value;
-        const frequency = parseInt(document.getElementById("frequency").value);
-
-        // Clear chart
-        chartData.labels = [];
-        chartData.datasets[0].data = [];
-        ecgChart.update();
-
-        // Send start command
-        socket.emit("start_acquisition", {
-          address: address,
-          frequency: frequency,
-          channel_code: 0x01, // First channel
+        Object.entries(data.channels).forEach(([portStr, value]) => {
+          const idx = portToDatasetIndex[parseInt(portStr)];
+          if (idx !== undefined && signalChart.data.datasets[idx]) {
+            signalChart.data.datasets[idx].data.push(value);
+          }
         });
 
-        // Update UI
-        document.getElementById("startBtn").disabled = true;
-        document.getElementById("stopBtn").disabled = false;
+        if (signalChart.data.labels.length > maxDataPoints) {
+          signalChart.data.labels.shift();
+          signalChart.data.datasets.forEach((d) => d.data.shift());
+        }
+
+        signalChart.update("none");
+      }
+
+      // ── Channel Config ────────────────────────────────────────────────────────
+      function getChannelConfig() {
+        return [1, 2, 3, 4, 5, 6].map((port) => ({
+          port: port,
+          enabled: document.getElementById(`ch${port}Enabled`).checked,
+          type: document.getElementById(`ch${port}Type`).value,
+          label:
+            document.getElementById(`ch${port}Label`).value.trim() ||
+            `A${port}`,
+        }));
+      }
+
+      // ── Acquisition Controls ──────────────────────────────────────────────────
+      function startAcquisition() {
+        const channels = getChannelConfig();
+        const activeChannels = channels.filter((c) => c.enabled);
+
+        if (activeChannels.length === 0) {
+          showError("Please enable at least one channel before starting.");
+          return;
+        }
+
+        // Reset sample counter and chart
+        sampleCount = 0;
+        document.getElementById("samplesReceived").textContent = "0";
+
+        portToDatasetIndex = {};
+        signalChart.data.labels = [];
+        signalChart.data.datasets = activeChannels.map((ch, idx) => {
+          portToDatasetIndex[ch.port] = idx;
+          return {
+            label: ch.label || `A${ch.port}`,
+            data: [],
+            borderColor: CHANNEL_COLORS[ch.port],
+            backgroundColor: CHANNEL_COLORS[ch.port] + "18",
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.4,
+          };
+        });
+        signalChart.update();
+
+        setAcquisitionRunning(true);
+
+        socket.emit("start_acquisition", {
+          address: document.getElementById("deviceAddress").value.trim(),
+          frequency: parseInt(document.getElementById("frequency").value),
+          channels: channels,
+        });
 
         showSuccess("Starting acquisition...");
       }
 
-      // Stop acquisition
       function stopAcquisition() {
         socket.emit("stop_acquisition");
-
-        // Update UI
-        document.getElementById("startBtn").disabled = false;
-        document.getElementById("stopBtn").disabled = true;
-
+        setAcquisitionRunning(false);
         showSuccess("Stopping acquisition...");
       }
 
-      // Show error message
-      function showError(message) {
-        const errorDiv = document.getElementById("errorMessage");
-        errorDiv.textContent = message;
-        errorDiv.style.display = "block";
-
-        setTimeout(() => {
-          errorDiv.style.display = "none";
-        }, 5000);
+      function setAcquisitionRunning(running) {
+        document.getElementById("startBtn").disabled = running;
+        document.getElementById("stopBtn").disabled = !running;
+        const configSection = document.getElementById("configSection");
+        if (running) {
+          configSection.classList.add("config-disabled");
+        } else {
+          configSection.classList.remove("config-disabled");
+        }
       }
 
-      // Show success message
-      function showSuccess(message) {
-        const successDiv = document.getElementById("successMessage");
-        successDiv.textContent = message;
-        successDiv.style.display = "block";
-
-        setTimeout(() => {
-          successDiv.style.display = "none";
-        }, 3000);
+      // ── Toastify helpers ──────────────────────────────────────────────────────
+      function toast(
+        message,
+        { background, duration = 3500, close = false } = {},
+      ) {
+        Toastify({
+          text: message,
+          duration,
+          close,
+          gravity: "top",
+          position: "right",
+          stopOnFocus: true,
+          style: { background },
+        }).showToast();
       }
 
-      // Load recordings list
+      const showSuccess = (msg) => toast(msg, { background: "#10b981" });
+      const showError = (msg) =>
+        toast(msg, { background: "#ef4444", duration: 6000 });
+
+      // ── Recordings ────────────────────────────────────────────────────────────
       function loadRecordings() {
         fetch("/api/recordings")
-          .then((response) => response.json())
+          .then((r) => r.json())
           .then((recordings) => {
-            const recordingsList = document.getElementById("recordingsList");
-
+            const list = document.getElementById("recordingsList");
             if (recordings.length === 0) {
-              recordingsList.innerHTML =
+              list.innerHTML =
                 '<p style="color: #999; font-style: italic;">No recordings available</p>';
               return;
             }
-
-            let html = "";
-            recordings.forEach((recording) => {
-              const sizeKB = (recording.size / 1024).toFixed(2);
-              const date = new Date(recording.created * 1000).toLocaleString();
-              const samples = recording.metadata.samples || "N/A";
-              const frequency = recording.metadata.frequency || "N/A";
-
-              html += `
-                            <div class="recording-item">
-                                <div class="recording-info">
-                                    <h3>${recording.filename}</h3>
-                                    <p>📅 ${date} | 📊 ${samples} samples | ⚡ ${frequency} Hz | 💾 ${sizeKB} KB</p>
-                                </div>
-                                <a href="/api/recordings/${recording.filename}" class="btn-download" download>Download</a>
-                            </div>
-                        `;
-            });
-
-            recordingsList.innerHTML = html;
+            list.innerHTML = recordings
+              .map((rec) => {
+                const sizeKB = (rec.size / 1024).toFixed(2);
+                const date = new Date(rec.created * 1000).toLocaleString();
+                const samples = rec.metadata.samples || "N/A";
+                const frequency = rec.metadata.frequency || "N/A";
+                return `
+                <div class="recording-item">
+                  <div class="recording-info">
+                    <h3>${rec.filename}</h3>
+                    <p>📅 ${date} | 📊 ${samples} samples | ⚡ ${frequency} Hz | 💾 ${sizeKB} KB</p>
+                  </div>
+                  <a href="/api/recordings/${rec.filename}" class="btn-download" download>Download</a>
+                </div>
+              `;
+              })
+              .join("");
           })
-          .catch((error) => {
-            console.error("Error loading recordings:", error);
-          });
+          .catch((err) => console.error("Error loading recordings:", err));
       }
 
-      // Listen for new recordings
       socket.on("new_recording", (data) => {
         showSuccess(
           `Recording saved: ${data.filename} (${data.samples} samples)`,
@@ -605,11 +918,19 @@
         loadRecordings();
       });
 
-      // Load initial status and recordings
+      // ── Init ──────────────────────────────────────────────────────────────────
+      buildChannelRows();
+      // Apply highlight to any channels that are pre-checked on page load
+      [1, 2, 3, 4, 5, 6].forEach((port) => {
+        if (document.getElementById(`ch${port}Enabled`).checked) {
+          onChannelToggle(port);
+        }
+      });
+
       fetch("/api/status")
-        .then((response) => response.json())
+        .then((r) => r.json())
         .then((status) => updateStatus(status))
-        .catch((error) => console.error("Error fetching status:", error));
+        .catch((err) => console.error("Error fetching status:", err));
 
       loadRecordings();
     </script>

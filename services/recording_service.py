@@ -10,13 +10,13 @@ from config.settings import RECORDINGS_DIR
 def save_recording_to_csv(recording_data, recording_metadata, start_time, socketio=None):
     """
     Save recorded data to CSV file.
-    
+
     Args:
         recording_data: List of recorded samples
         recording_metadata: Metadata dictionary for the recording
         start_time: Recording start datetime
         socketio: Optional SocketIO instance for emitting events
-    
+
     Returns:
         str: Filename of saved recording, or None if failed
     """
@@ -25,33 +25,41 @@ def save_recording_to_csv(recording_data, recording_metadata, start_time, socket
         return None
 
     # Generate filename with timestamp
-    filename = f"ecg_recording_{start_time.strftime('%Y%m%d_%H%M%S')}.csv"
+    filename = f"recording_{start_time.strftime('%Y%m%d_%H%M%S')}.csv"
     filepath = os.path.join(RECORDINGS_DIR, filename)
+
+    active_ports = recording_metadata.get('active_ports', [1])
+    channel_labels = recording_metadata.get('channel_labels', {})
+    channel_types = recording_metadata.get('channel_types', {})
 
     try:
         with open(filepath, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
 
             # Write metadata header
-            writer.writerow(['# BITalino ECG Recording'])
+            writer.writerow(['# BITalino Recording'])
             writer.writerow(['# Start Time', start_time.strftime('%Y-%m-%d %H:%M:%S')])
             writer.writerow(['# Frequency (Hz)', recording_metadata.get('frequency', 'N/A')])
-            writer.writerow(['# Channel Code', hex(recording_metadata.get('channel_code', 0))])
+            writer.writerow(['# Active Ports', ','.join(str(p) for p in active_ports)])
             writer.writerow(['# Battery (%)', recording_metadata.get('battery', 'N/A')])
             writer.writerow(['# Device Address', recording_metadata.get('address', 'N/A')])
             writer.writerow(['# Total Samples', len(recording_data)])
             writer.writerow([])  # Empty line
 
-            # Write data header
-            writer.writerow(['Sequence', 'ECG Value', 'Timestamp'])
+            # Write data header with dynamic columns per active port
+            col_headers = ['Sequence', 'Timestamp']
+            for port in active_ports:
+                label = channel_labels.get(port, f'A{port}')
+                sig_type = channel_types.get(port, 'RAW')
+                col_headers.append(f"{label} ({sig_type}) Port{port}")
+            writer.writerow(col_headers)
 
             # Write data rows
             for sample in recording_data:
-                writer.writerow([
-                    sample['sequence'],
-                    sample['value'],
-                    sample['timestamp']
-                ])
+                row = [sample['sequence'], sample['timestamp']]
+                for port in active_ports:
+                    row.append(sample['channels'].get(port, ''))
+                writer.writerow(row)
 
         print(f"Recording saved: {filepath}")
 

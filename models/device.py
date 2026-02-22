@@ -10,76 +10,78 @@ plux = load_plux_library()
 
 class DeviceStatus:
     """Class to manage device status information."""
-    
+
     def __init__(self):
         self.connected = False
         self.battery = 0
         self.frequency = 0
-        self.channel = 0
+        self.active_ports = []
         self.samples_received = 0
         self.error = None
-    
+
     def to_dict(self):
         """Convert status to dictionary for JSON serialization."""
         return {
             'connected': self.connected,
             'battery': self.battery,
             'frequency': self.frequency,
-            'channel': self.channel,
+            'active_ports': self.active_ports,
             'samples_received': self.samples_received,
             'error': self.error
         }
-    
+
     def reset(self):
         """Reset status to default values."""
         self.connected = False
         self.battery = 0
         self.frequency = 0
-        self.channel = 0
+        self.active_ports = []
         self.samples_received = 0
         self.error = None
 
 
-class BITalinoDevice(plux.SignalsDev):
+class BITalinoDevice(plux.BITalinoDev):
     """
     BITalino device class for managing device communication and data acquisition.
     """
-    
-    def __init__(self, address, data_queue, recording_data):
+
+    def __init__(self, address):
         """
         Initialize BITalino device.
-        
+
         Args:
             address: Device Bluetooth address
-            data_queue: Queue for real-time data streaming
-            recording_data: List to store all recorded data
         """
-        plux.MemoryDev.__init__(address)
+        plux.BITalinoDev.__init__(address)
         self.frequency = 0
         self.running = False
-        self.data_queue = data_queue
-        self.recording_data = recording_data
+        self.data_queue = None
+        self.recording_data = None
+        self.active_ports = []  # Ordered list of active port numbers
 
     def onRawFrame(self, nSeq, data):
         """
         Called for each frame of data received from BITalino.
-        
+
         Args:
             nSeq: Sequence number of the frame
-            data: List of channel values
-        
+            data: List of channel values ordered by active_ports
+
         Returns:
             bool: True to stop acquisition, False to continue
         """
         if self.running:
-            # Extract ECG value (first channel)
-            ecg_value = data[0] if len(data) > 0 else 0
             current_time = time.time()
+
+            # Map data values to their port numbers
+            channel_values = {}
+            for i, port in enumerate(self.active_ports):
+                channel_values[port] = data[i] if i < len(data) else 0
 
             # Store data for CSV recording
             self.recording_data.append({
                 'sequence': nSeq,
-                'value': ecg_value,
+                'channels': channel_values,
                 'timestamp': current_time
             })
 
@@ -87,7 +89,7 @@ class BITalinoDevice(plux.SignalsDev):
             if not self.data_queue.full():
                 self.data_queue.put({
                     'sequence': nSeq,
-                    'value': ecg_value,
+                    'channels': channel_values,
                     'timestamp': current_time
                 })
 
