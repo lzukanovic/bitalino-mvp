@@ -625,9 +625,6 @@
       // Maps port number → dataset index in signalChart for the current acquisition
       let portToDatasetIndex = {};
 
-      // Client-side sample counter, updated on every new_data event
-      let sampleCount = 0;
-
       // ── Build Channel Rows ──────────────────────────────────────────────────
       function buildChannelRows() {
         const container = document.getElementById("channelsContainer");
@@ -737,25 +734,43 @@
         const indicator = statusItem.querySelector(".indicator");
 
         if (status.connected) {
+          // Connected
+          // Show green border
           statusItem.className = "status-item connected";
+          // Show "Connected" text
           connectionText.textContent = "Connected";
+          // Show green indicator
           indicator.className = "indicator connected";
-          document.getElementById("batteryLevel").textContent =
-            status.battery + "%";
-          document.getElementById("sampleRate").textContent =
-            status.frequency + " Hz";
         } else if (status.error) {
-          // Disconnected due to an error — show amber "Error" state
+          // Disconnected due to an error
+          // Show amber border
           statusItem.className = "status-item faulted";
+          // Show "Error" text
           connectionText.textContent = "Error";
+          // Show amber indicator
           indicator.className = "indicator faulted";
+          // Display error toast
           showError(status.error);
         } else {
+          // Disconnected (no error)
+          // Show red border
           statusItem.className = "status-item disconnected";
+          // Show "Disconnected" text
           connectionText.textContent = "Disconnected";
+          // Show red indicator
           indicator.className = "indicator disconnected";
         }
 
+        // Update battery
+        document.getElementById("batteryLevel").textContent =
+          status.battery + "%";
+        // Update sample rate
+        document.getElementById("sampleRate").textContent =
+          status.frequency + " Hz";
+        // Update samples received
+        document.getElementById("samplesReceived").textContent =
+          sampleCount.toLocaleString();
+        // Update active channels
         const activePorts = status.active_ports || [];
         document.getElementById("activeChannels").textContent =
           activePorts.length > 0
@@ -766,10 +781,6 @@
       // ── Chart Update ─────────────────────────────────────────────────────────
       function updateChart(data) {
         if (!data.channels) return;
-
-        sampleCount++;
-        document.getElementById("samplesReceived").textContent =
-          sampleCount.toLocaleString();
 
         signalChart.data.labels.push(data.sequence);
 

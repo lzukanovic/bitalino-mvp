@@ -58,8 +58,8 @@ def init_socketio_handlers(socketio, acq_service):
     def handle_stop_acquisition():
         """Stop BITalino acquisition."""
         try:
-            acquisition_service.stop()
             emit('status_update', acquisition_service.get_status())
+            acquisition_service.stop()
         except Exception as e:
             print(f"Error stopping acquisition: {e}")
             emit('error', {'message': f'Failed to stop acquisition: {str(e)}'})

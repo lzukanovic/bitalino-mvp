@@ -117,7 +117,7 @@ class AcquisitionService:
             self.device.start(frequency, active_ports, 16)
 
             # Emit status update
-            self.socketio.emit('status_update', self.status.to_dict())
+            self.socketio.emit('status_update', self.get_status())
 
             # Run acquisition loop (calls device.onRawFrame until it returns True)
             self.device.loop()
@@ -128,7 +128,7 @@ class AcquisitionService:
 
             self.status.connected = False
             self.is_active = False
-            self.socketio.emit('status_update', self.status.to_dict())
+            self.socketio.emit('status_update', self.get_status())
 
             # Save recording to CSV
             filename = save_recording_to_csv(
@@ -145,7 +145,7 @@ class AcquisitionService:
             self.status.error = str(e)
             self.status.connected = False
             self.is_active = False
-            self.socketio.emit('status_update', self.status.to_dict())
+            self.socketio.emit('status_update', self.get_status())
 
     def get_status(self):
         """
